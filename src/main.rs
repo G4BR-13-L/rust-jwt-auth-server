@@ -1,5 +1,5 @@
 
-use auth::{with_auth, Role}
+use auth::{with_auth, Role};
 use error::Error::*;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, hash::Hash};
@@ -26,23 +26,23 @@ pub struct User {
     pub role: String
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct LoginRequestDTO {
     pub email: String,
     pub password: String
 }
 
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct LoginResponseDTO {
     pub token: String
 } 
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let users = Arc::new(init_users());
 
-    let login_route = warpa::path!("login")
+    let login_route = warp::path!("login")
     .and(warp::post())
     .and(with_users(users.clone()))
     .and(warp::body::json())
@@ -59,9 +59,9 @@ async fn main() {
     let routes = login_route
     .or(user_route)
     .or(admin_route)
-    .recover(error::handler_rejection);
+    .recover(error::handle_rejection);
     
-    warp::serve(routes).run([127,0,0,1], 8000)).await;
+    warp::serve(routes).run(([127,0,0,1], 8000)).await;
 
 }
 
@@ -69,13 +69,13 @@ fn with_users(users: Users) -> impl Filter<Extract = (Users,), Error = Infallibl
     warp::any().map(move || users.clone())
 }
 
-pub async fn login_handler(user: Users, body: LoginRequestDTO) -> WebResult<impl Reply> {
+pub async fn login_handler(users: Users, body: LoginRequestDTO) -> WebResult<impl Reply> {
     match users
     .iter()
     .find(|(_uuid, user)| user.email == body.email && user.password == body.password)
 
     {
-        some((uuid, user)) => {
+        Some((uuid, user)) => {
             let token = auth::create_jwt(&uuid, &Role::from_str(&user.role))
             .map_err(|e| reject::custom(e))?;
 
