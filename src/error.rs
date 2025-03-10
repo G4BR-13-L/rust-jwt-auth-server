@@ -28,9 +28,9 @@ pub enum Error{
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-struct ErrorResponse{
-    message: String,
-    status: String
+pub(crate) struct ErrorResponse{
+    pub message: String,
+    pub status: String
 }
 
 impl warp::reject::Reject for Error {}
